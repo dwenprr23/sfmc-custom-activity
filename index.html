@@ -3,35 +3,42 @@
 <head>
     <title>WhatsApp Alert Router</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/postmonger/0.0.16/postmonger.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/postmonger@0.0.16/postmonger.js"></script>
     
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+        #errorBox { display: none; background: #ffebee; color: #c62828; padding: 15px; border-left: 5px solid #c62828; margin-top: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
     <h2>Internal Email Router</h2>
     <p>This activity will route an email alert to your team when a user arrives. Click <b>Done</b> to save.</p>
+    
+    <div id="errorBox"></div>
 
     <script>
-        // 2. ONLY run this script AFTER the CDN is 100% finished downloading
         window.onload = function() {
             
+            // 2. THE KILL SWITCH: If the CDN is blocked by your corporate firewall/VPN, stop the spinner and show why.
+            if (typeof Postmonger === 'undefined') {
+                var err = document.getElementById('errorBox');
+                err.style.display = 'block';
+                err.innerText = "FATAL ERROR: Your browser, VPN, or ad-blocker is blocking the Postmonger CDN (cdn.jsdelivr.net). Please disable your ad-blocker or disconnect from your VPN and refresh.";
+                return; // Stop the script before it hits Line 17!
+            }
+
+            // 3. The Actual Logic
             var connection = new Postmonger.Session();
             var payload = {};
             var eventDefinitionKey;
 
-            // 3. Kill the spinner
-            console.log("UI Loaded successfully. Sending ready signal...");
             connection.trigger('ready');
 
-            // 4. Request Journey Details
             connection.on('initActivity', function(data) {
                 if (data) { payload = data; }
                 connection.trigger('requestTriggerEventDefinition');
             });
 
-            // 5. Enable the Done button
             connection.on('requestedTriggerEventDefinition', function(eventDefinitionModel) {
                 if (eventDefinitionModel) {
                     eventDefinitionKey = eventDefinitionModel.eventDefinitionKey;
@@ -39,7 +46,6 @@
                 connection.trigger('updateButton', { button: 'next', enabled: true });
             });
 
-            // 6. Save Data on Click
             connection.on('clickedNext', function() {
                 payload.metaData = payload.metaData || {};
                 payload.arguments = payload.arguments || {};
