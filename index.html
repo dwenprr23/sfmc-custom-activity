@@ -13,42 +13,49 @@
     <h2>Internal Email Router</h2>
     <p>This activity will route an email alert to your team when a user arrives. Click <b>Done</b> to save.</p>
 
-    <script>
-        var connection = new Postmonger.Session();
-        var payload = {};
-        var eventDefinitionKey; 
+   <script>
+    var connection = new Postmonger.Session();
+    var payload = {};
+    var eventDefinitionKey;
 
-        // 1. Tell Journey Builder the iframe is loaded (This stops the spinner!)
-        $(window).ready(function() {
-            connection.trigger('ready');
-        });
+    // 1. Bulletproof Vanilla JS to kill the spinner
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("UI Loaded. Sending ready signal to Journey Builder...");
+        connection.trigger('ready');
+    });
 
-        // 2. Journey builder fires 'initActivity'
-        connection.on('initActivity', function(data) {
-            if (data) { payload = data; }
-            connection.trigger('requestTriggerEventDefinition');
-        });
+    // 2. Journey builder fires 'initActivity'
+    connection.on('initActivity', function(data) {
+        if (data) { payload = data; }
+        connection.trigger('requestTriggerEventDefinition');
+    });
 
-        // 3. Journey Builder responds with the entry source details
-        connection.on('requestedTriggerEventDefinition', function(eventDefinitionModel) {
-            if (eventDefinitionModel) {
-                eventDefinitionKey = eventDefinitionModel.eventDefinitionKey;
-            }
-            connection.trigger('updateButton', { button: 'next', enabled: true });
-        });
+    // 3. Journey Builder responds with the entry source details
+    connection.on('requestedTriggerEventDefinition', function(eventDefinitionModel) {
+        if (eventDefinitionModel) {
+            eventDefinitionKey = eventDefinitionModel.eventDefinitionKey;
+        }
+        connection.trigger('updateButton', { button: 'next', enabled: true });
+    });
 
-        // 4. When the user clicks "Done"
-        connection.on('clickedNext', function() {
-            var dynamicPhoneBinding = "{{Event." + eventDefinitionKey + ".\"MobileNumber\"}}";
+    // 4. When the user clicks "Done"
+    connection.on('clickedNext', function() {
+        // Ensure payload structure exists safely
+        payload.metaData = payload.metaData || {};
+        payload.arguments = payload.arguments || {};
+        payload.arguments.execute = payload.arguments.execute || {};
+        
+        var safeEventKey = eventDefinitionKey ? eventDefinitionKey : "UnknownEvent";
+        var dynamicPhoneBinding = "{{Event." + safeEventKey + ".\"MobileNumber\"}}";
 
-            payload.arguments.execute.inArguments = [
-                { "subscriberKey": "{{Contact.Key}}" },
-                { "mobileNumber": dynamicPhoneBinding }
-            ];
+        payload.arguments.execute.inArguments = [
+            { "subscriberKey": "{{Contact.Key}}" },
+            { "mobileNumber": dynamicPhoneBinding }
+        ];
 
-            payload.metaData.isConfigured = true;
-            connection.trigger('updateActivity', payload);
-        });
-    </script>
+        payload.metaData.isConfigured = true;
+        connection.trigger('updateActivity', payload);
+    });
+</script>
 </body>
 </html>
